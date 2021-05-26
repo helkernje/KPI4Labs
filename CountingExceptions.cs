@@ -1,37 +1,31 @@
-using System.Collections.Generic;
-using System.ComponentModel;
 using System;
+using System.Collections.Generic;
 
-namespace LW2
+namespace Lab1
 {
-    public class CountingExceptions
-    {
-        IListSource _exceptionListSource;
-        ITelemetryReporter _telemetryReporter;
-
+	public class CountingExceptions
+	{
+        public static List<Type> _criticalExceptions = new List<Type>()
+              {
+                typeof(DivideByZeroException),
+                typeof(OutOfMemoryException),
+                typeof(StackOverflowException),
+                typeof(InsufficientMemoryException),
+                typeof(InsufficientExecutionStackException)
+              };
         public int CounterCriticalExceptions { get; private set; }
 
         public int CounterNotCriticalExceptions { get; private set; }
-
-        public int ReportFailures { get; private set; }
-
-        public CountingExceptions() { }
 
         static void Main(string[] args)
         {
 
         }
 
-        public CountingExceptions(IListSource src, ITelemetryReporter reporter)
-        {
-            _exceptionListSource = src;
-            _telemetryReporter = reporter;
-        }
-
         public bool IsCritical(Exception exception)
         {
-            var criticalExceptions = _exceptionListSource.GetList();
-            return criticalExceptions.Contains(exception.GetType());
+            
+            return _criticalExceptions.Contains(exception.GetType());
         }
 
         public void CountExceptions(Exception exception)
@@ -39,25 +33,11 @@ namespace LW2
             if (IsCritical(exception))
             {
                 CounterCriticalExceptions += 1;
-                if (!_telemetryReporter.Report(exception.ToString()))
-                {
-                    ReportFailures += 1;
-                }
             }
             else
             {
                 CounterNotCriticalExceptions += 1;
             }
-        }
-
-        public IListSource ExceptionListSource
-        {
-            set { _exceptionListSource = value; }
-        }
-
-        public ITelemetryReporter TelemetryReporter
-        {
-            set { _telemetryReporter = value; }
         }
 	}
 }

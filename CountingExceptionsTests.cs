@@ -1,12 +1,12 @@
 using System;
-using System.ComponentModel;
 using System.Collections.Generic;
-using NSubstitute;
+using Lab1KPI4;
 using NUnit.Framework;
 
-namespace LW2.UnitTests
+namespace Project1.UnitTests
 {
-    public class TestData
+    [TestFixture]
+    public class CountingExceptionsTests
     {
         public static List<Type> CriticalExceptions = new List<Type>()
         {
@@ -25,30 +25,7 @@ namespace LW2.UnitTests
             typeof(IndexOutOfRangeException),
             typeof(InvalidOperationException)
         };
-    }
 
-    [SetUpFixture]
-    public class TestSetup
-    {
-        public static System.ComponentModel.IListSource ListSource;
-        public static ITelemetryReporter NormalTelemetryReporter;
-        public static ITelemetryReporter FailingTelemetryReporter;
-
-        [OneTimeSetUp]
-        public void OneTimeSetUp()
-        {
-            ListSource = Substitute.For<IListSource>();
-            ListSource.GetList().Returns(TestData.CriticalExceptions);
-
-            NormalTelemetryReporter = Substitute.For<ITelemetryReporter>();
-            NormalTelemetryReporter.Report(Arg.Any<String>()).Returns(true);
-            FailingTelemetryReporter = Substitute.For<ITelemetryReporter>();
-            FailingTelemetryReporter.Report(Arg.Any<String>()).Returns(false);
-        }
-    }
-    [TestFixture]
-    public class LW2Tests
-    {
         [TestCase(typeof(DivideByZeroException), true)]
         [TestCase(typeof(OutOfMemoryException), true)]
         [TestCase(typeof(StackOverflowException), true)]
@@ -64,12 +41,6 @@ namespace LW2.UnitTests
         {
             // arrange
             var instance = (Exception)Activator.CreateInstance(exceptionType);
-            // 1. Use a LW2Factory
-            var factory = new Factory()
-                .WithListSource(TestSetup.ListSource)
-                .WithTelemetryReporter(TestSetup.NormalTelemetryReporter)
-                .Build();
-
             try
             {
                 // act
@@ -78,7 +49,7 @@ namespace LW2.UnitTests
             catch (Exception e)
             {
                 // assert
-                Assert.AreEqual(expectedResult, factory.IsCritical(e));
+                Assert.AreEqual(expectedResult, new CountingExceptions().IsCritical(e));
                 return;
             }
         }
@@ -86,35 +57,30 @@ namespace LW2.UnitTests
         [Test]
         public void CountExceptions_CounterValues_Correct()
         {
-            // arrange
-            // 2. Use constructor
-            var counterExceptions = new CountingExceptions(TestSetup.ListSource, TestSetup.NormalTelemetryReporter);
+            var counterExceptions = new CountingExceptions();
 
             // act
-            foreach (var item in TestData.CriticalExceptions)
+            foreach (var item in criticalExceptions)
             {
                 var instance = (Exception)Activator.CreateInstance(item);
                 counterExceptions.CountExceptions(instance);
             }
-            foreach (var item in TestData.NonCriticalExceptions)
+            foreach (var item in nonCriticalExceptions)
             {
                 var instance = (Exception)Activator.CreateInstance(item);
                 counterExceptions.CountExceptions(instance);
             }
 
             // assert
-            Assert.AreEqual(counterExceptions.CounterCriticalExceptions, TestData.CriticalExceptions.Count);
-            Assert.AreEqual(counterExceptions.CounterNotCriticalExceptions, TestData.NonCriticalExceptions.Count);
+            Assert.AreEqual(counterExceptions.CounterCriticalExceptions, criticalExceptions.Count);
+            Assert.AreEqual(counterExceptions.CounterNotCriticalExceptions, nonCriticalExceptions.Count);
         }
 
         [Test]
         public void CountExceptions_InitCounters_Zero()
         {
             // arrange
-            // 3. Use property access
             var counterExceptions = new CountingExceptions();
-            counterExceptions.ExceptionListSource = TestSetup.ListSource;
-            counterExceptions.TelemetryReporter = TestSetup.NormalTelemetryReporter;
 
             // act: nothing
 
@@ -122,37 +88,5 @@ namespace LW2.UnitTests
             Assert.AreEqual(counterExceptions.CounterCriticalExceptions, 0);
             Assert.AreEqual(counterExceptions.CounterNotCriticalExceptions, 0);
         }
-
-        [Test]
-        public void TelemetryReport_FailureCounter_Correct()
-        {
-            // arrange
-            var counterExceptionsNormalTelemetry = new CountingExceptions(TestSetup.ListSource, TestSetup.NormalTelemetryReporter);
-            var counterExceptionsFailingTelemetry = new CountingExceptions(TestSetup.ListSource, TestSetup.FailingTelemetryReporter);
-
-            // act
-            foreach (var item in TestData.CriticalExceptions)
-            {
-                var instance = (Exception)Activator.CreateInstance(item);
-                counterExceptionsNormalTelemetry.CountExceptions(instance);
-                counterExceptionsFailingTelemetry.CountExceptions(instance);
-            }
-
-            // assert
-            Assert.AreEqual(counterExceptionsNormalTelemetry.ReportFailures, 0);
-            Assert.AreEqual(counterExceptionsFailingTelemetry.ReportFailures, TestData.CriticalExceptions.Count);
-        }
-
-        [Test]
-        public void TelemetryReport_InitCounter_Zero()
-        {
-            // arrange
-            var counterExceptionsFailingTelemetry = new CountingExceptions(TestSetup.ListSource, TestSetup.FailingTelemetryReporter);
-
-            // act: nothing
-
-            // assert
-            Assert.AreEqual(counterExceptionsFailingTelemetry.ReportFailures, 0);
-        }
     }
-}
+} 
